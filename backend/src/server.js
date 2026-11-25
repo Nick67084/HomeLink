@@ -1629,6 +1629,210 @@ app.post(
 );
 
 
+// ==========================================
+// COMMUNITY ANNOUNCEMENTS
+// ==========================================
+
+const announcementSchema = z.object({
+  title: z.string().trim().min(1).max(150),
+  content: z.string().trim().min(1).max(10000),
+  category: z.enum([
+    'general',
+    'maintenance',
+    'event',
+    'emergency'
+  ]).default('general'),
+  priority: z.enum([
+    'normal',
+    'important',
+    'urgent'
+  ]).default('normal')
+});
+
+// Resident: View published announcements
+app.get('/api/announcements', auth, approved, asyncRoute(async (req, res) => {
+  const rows = await run(`
+    SELECT *
+    FROM announcements
+    WHERE is_published = 1
+    ORDER BY published_at DESC, id DESC
+  `);
+
+  res.json(rows);
+}));
+
+// Admin: View all announcements
+app.get('/api/admin/announcements', auth, admin, asyncRoute(async (req, res) => {
+  const rows = await run(`
+    SELECT *
+    FROM announcements
+    ORDER BY created_at DESC, id DESC
+  `);
+
+  res.json(rows);
+}));
+
+// Admin: Create announcement
+app.post('/api/admin/announcements', auth, admin, asyncRoute(async (req, res) => {
+  const parsed = announcementSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return bad(res, 'Invalid announcement information');
+  }
+
+  const { title, content, category, priority } = parsed.data;
+
+  const result = await run(`
+    INSERT INTO announcements
+      (title, content, category, priority, created_by)
+    VALUES (?, ?, ?, ?, ?)
+  `, [
+    title,
+    content,
+    category,
+    priority,
+    req.user.id
+  ]);
+
+  res.status(201).json({
+    message: 'Announcement created successfully',
+    id: result.insertId
+  });
+}));
+
+// Admin: Update announcement
+app.put('/api/admin/announcements/:id', auth, admin, asyncRoute(async (req, res) => {
+  const parsed = announcementSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return bad(res, 'Invalid announcement information');
+  }
+
+  const { title, content, category, priority } = parsed.data;
+
+  const result = await run(`
+    UPDATE announcements
+    SET title = ?, content = ?, category = ?, priority = ?
+    WHERE id = ?
+  `, [
+    title,
+    content,
+    category,
+    priority,
+    req.params.id
+  ]);
+
+  if (!result.affectedRows) {
+    return bad(res, 'Announcement not found', 404);
+  }
+
+  res.json({
+    message: 'Announcement updated successfully'
+  });
+}));
+
+// Admin: Publish announcement
+
+app.put(
+  '/api/admin/announcements/:id/publish',
+  auth,
+  admin,
+  asyncRoute(async (req, res) => {
+    const announcementId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(announcementId) ||
+        announcementId <= 0) {
+      return bad(res, 'Invalid announcement ID');
+    }
+
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const [result] = await connection.execute(
+        `UPDATE announcements
+         SET is_published = 1,
+             published_at = CURRENT_TIMESTAMP
+         WHERE id = ?
+           AND is_published = 0`,
+        [announcementId]
+      );
+
+      if (!result.affectedRows) {
+        await connection.rollback();
+
+        return bad(
+          res,
+          'Announcement not found or already published'
+        );
+      }
+
+      const [announcements] = await connection.execute(
+        `SELECT title, content
+         FROM announcements
+         WHERE id = ?`,
+        [announcementId]
+      );
+
+      const announcement = announcements[0];
+
+      const [notificationResult] =
+        await connection.execute(
+          `INSERT INTO notifications
+            (user_id, title, message, type, is_read)
+           SELECT
+             id,
+             ?,
+             ?,
+             'announcement',
+             0
+           FROM users
+           WHERE role = 'resident'
+             AND approved = 1`,
+          [
+            announcement.title,
+            announcement.content
+          ]
+        );
+
+      await connection.commit();
+
+      res.json({
+        message: 'Announcement published successfully',
+        notified_residents:
+          notificationResult.affectedRows
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+
+    } finally {
+      connection.release();
+    }
+  })
+);
+
+
+// Admin: Delete announcement
+app.delete('/api/admin/announcements/:id', auth, admin, asyncRoute(async (req, res) => {
+  const result = await run(`
+    DELETE FROM announcements
+    WHERE id = ?
+  `, [req.params.id]);
+
+  if (!result.affectedRows) {
+    return bad(res, 'Announcement not found', 404);
+  }
+
+  res.json({
+    message: 'Announcement deleted successfully'
+  });
+}));
+
+
+
 app.use((req, res) => {
   return bad(res, 'Route not found', 404);
 });

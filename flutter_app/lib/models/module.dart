@@ -11,6 +11,7 @@ const residentModules = [
   Module('Suggestions','/suggestions/my',Icons.feedback_outlined),Module('Community Rules','/rules',Icons.menu_book_outlined),
   Module('Messages','/messages/my',Icons.chat_bubble_outline),Module('Home Services','/services',Icons.cleaning_services_outlined),
   Module('Service Requests','/service-requests/my',Icons.handyman_outlined),
+  Module('Announcements','/announcements',Icons.campaign_outlined),
 ];
 const adminModules = [
   Module('Residents','/admin/residents',Icons.people_alt_outlined),Module('Facility Bookings','/admin/bookings',Icons.event_note_outlined),
@@ -18,5 +19,11 @@ const adminModules = [
   Module('Parcels','/admin/parcels',Icons.inventory_2_outlined),Module('Bills','/admin/bills',Icons.receipt_long_outlined),
   Module('Suggestions','/admin/suggestions',Icons.feedback_outlined),Module('Community Rules','/rules',Icons.menu_book_outlined),
   Module('Messages','/admin/messages',Icons.chat_bubble_outline),Module('Service Requests','/admin/service-requests',Icons.handyman_outlined),
+  Module(
+  'Announcements',
+  '/admin/announcements',
+  Icons.campaign_outlined,
+  adminOnly: true,
+),
 ];
 

@@ -14,6 +14,8 @@ part 'screens/shared/app_shell.dart';
 part 'screens/shared/records_screen.dart';
 part 'screens/shared/record_form.dart';
 part 'screens/shared/profile_editor.dart';
+part 'screens/shared/announcements_screen.dart';
+part 'screens/shared/admin_announcements_screen.dart';
 
 
 const navy = Color(0xFF123C69);

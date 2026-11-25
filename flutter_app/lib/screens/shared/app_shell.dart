@@ -151,23 +151,39 @@ class _ShellState extends State<Shell> {
     }
   }
 
-  void open(Module m) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RecordsScreen(
+  
+
+void open(Module m) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) {
+        if (m.path == '/announcements') {
+          return const AnnouncementsScreen();
+        }
+
+        if (m.path == '/admin/announcements' && isAdmin) {
+          return const AdminAnnouncementsScreen();
+        }
+
+        return RecordsScreen(
           module: m,
           isAdmin: isAdmin,
           user: widget.user,
-        ),
-      ),
-    ).then((_) {
-      if (!isAdmin) {
-        loadResidentDashboard();
-      }
-      loadNotifications();
-    });
-  }
+        );
+      },
+    ),
+  ).then((_) {
+    if (!mounted) return;
+
+    if (!isAdmin) {
+      loadResidentDashboard();
+    }
+
+    loadNotifications();
+  });
+}
+
 
   void openPath(
     String title,
