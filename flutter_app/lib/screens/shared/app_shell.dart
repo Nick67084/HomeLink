@@ -1,4 +1,3 @@
-
 part of '../../main.dart';
 
 class Shell extends StatefulWidget {
@@ -24,8 +23,7 @@ class _ShellState extends State<Shell> {
 
   bool get isAdmin => widget.user['role'] == 'juristic';
 
-  List<Module> get modules =>
-      isAdmin ? adminModules : residentModules;
+  List<Module> get modules => isAdmin ? adminModules : residentModules;
 
   @override
   void initState() {
@@ -46,8 +44,7 @@ class _ShellState extends State<Shell> {
 
       if (mounted) {
         setState(() {
-          unreadCount =
-              (result['unread_count'] as num).toInt();
+          unreadCount = (result['unread_count'] as num).toInt();
         });
       }
     } catch (e) {
@@ -61,8 +58,7 @@ class _ShellState extends State<Shell> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            const HomeLinkNotificationsScreen(),
+        builder: (_) => const HomeLinkNotificationsScreen(),
       ),
     ).then((_) {
       loadNotifications();
@@ -93,8 +89,7 @@ class _ShellState extends State<Shell> {
       final upcoming = bookings.where((booking) {
         final status = '${booking['status'] ?? ''}';
 
-        if (status != 'pending' &&
-            status != 'approved') {
+        if (status != 'pending' && status != 'approved') {
           return false;
         }
 
@@ -122,8 +117,7 @@ class _ShellState extends State<Shell> {
       if (mounted) {
         setState(() {
           upcomingBookings = upcoming;
-          featuredFacilities =
-              facilities.take(3).toList();
+          featuredFacilities = facilities.take(3).toList();
         });
       }
     } catch (e) {
@@ -151,39 +145,36 @@ class _ShellState extends State<Shell> {
     }
   }
 
-  
+  void open(Module m) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) {
+          if (m.path == '/announcements') {
+            return const AnnouncementsScreen();
+          }
 
-void open(Module m) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) {
-        if (m.path == '/announcements') {
-          return const AnnouncementsScreen();
-        }
+          if (m.path == '/admin/announcements' && isAdmin) {
+            return const AdminAnnouncementsScreen();
+          }
 
-        if (m.path == '/admin/announcements' && isAdmin) {
-          return const AdminAnnouncementsScreen();
-        }
+          return RecordsScreen(
+            module: m,
+            isAdmin: isAdmin,
+            user: widget.user,
+          );
+        },
+      ),
+    ).then((_) {
+      if (!mounted) return;
 
-        return RecordsScreen(
-          module: m,
-          isAdmin: isAdmin,
-          user: widget.user,
-        );
-      },
-    ),
-  ).then((_) {
-    if (!mounted) return;
+      if (!isAdmin) {
+        loadResidentDashboard();
+      }
 
-    if (!isAdmin) {
-      loadResidentDashboard();
-    }
-
-    loadNotifications();
-  });
-}
-
+      loadNotifications();
+    });
+  }
 
   void openPath(
     String title,
@@ -194,20 +185,16 @@ void open(Module m) {
   }
 
   String facilityPhoto(Map<String, dynamic> facility) {
-    final uploaded =
-        facility['image_url']?.toString().trim();
+    final uploaded = facility['image_url']?.toString().trim();
 
     if (uploaded != null &&
-        (uploaded.startsWith('https://') ||
-            uploaded.startsWith('http://'))) {
+        (uploaded.startsWith('https://') || uploaded.startsWith('http://'))) {
       return uploaded;
     }
 
-    final name =
-        '${facility['name'] ?? ''}'.toLowerCase();
+    final name = '${facility['name'] ?? ''}'.toLowerCase();
 
-    if (name.contains('fitness') ||
-        name.contains('gym')) {
+    if (name.contains('fitness') || name.contains('gym')) {
       return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=900&auto=format&fit=crop&q=85';
     }
 
@@ -240,9 +227,7 @@ void open(Module m) {
             icon: Badge(
               isLabelVisible: unreadCount > 0,
               label: Text(
-                unreadCount > 99
-                    ? '99+'
-                    : '$unreadCount',
+                unreadCount > 99 ? '99+' : '$unreadCount',
               ),
               child: const Icon(
                 Icons.notifications_outlined,
@@ -274,9 +259,7 @@ void open(Module m) {
             dashboard(),
             modulesPage(),
             RecordsScreen(
-              module: isAdmin
-                  ? adminModules[1]
-                  : residentModules[1],
+              module: isAdmin ? adminModules[1] : residentModules[1],
               isAdmin: isAdmin,
               user: widget.user,
               embedded: true,
@@ -322,9 +305,7 @@ void open(Module m) {
   }
 
   Widget dashboard() {
-    return isAdmin
-        ? adminDashboard()
-        : residentDashboard();
+    return isAdmin ? adminDashboard() : residentDashboard();
   }
 
   // =====================================================
@@ -332,14 +313,11 @@ void open(Module m) {
   // =====================================================
 
   Widget residentDashboard() {
-    final name =
-        '${widget.user['full_name'] ?? 'Resident'}';
+    final name = '${widget.user['full_name'] ?? 'Resident'}';
 
-    final building =
-        '${widget.user['building'] ?? '-'}';
+    final building = '${widget.user['building'] ?? '-'}';
 
-    final unit =
-        '${widget.user['unit_number'] ?? '-'}';
+    final unit = '${widget.user['unit_number'] ?? '-'}';
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -388,8 +366,7 @@ void open(Module m) {
                   Image.network(
                     'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1400&auto=format&fit=crop&q=85',
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Container(color: navy),
+                    errorBuilder: (_, __, ___) => Container(color: navy),
                   ),
                   Container(
                     decoration: BoxDecoration(
@@ -408,8 +385,7 @@ void open(Module m) {
                     right: 22,
                     bottom: 22,
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'Your Community.\nYour Home.',
@@ -460,13 +436,9 @@ void open(Module m) {
           const SizedBox(height: 13),
 
           GridView.count(
-            crossAxisCount:
-                MediaQuery.sizeOf(context).width >= 900
-                    ? 4
-                    : 2,
+            crossAxisCount: MediaQuery.sizeOf(context).width >= 900 ? 4 : 2,
             shrinkWrap: true,
-            physics:
-                const NeverScrollableScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
             mainAxisExtent: 105,
@@ -517,8 +489,7 @@ void open(Module m) {
           const SizedBox(height: 27),
 
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               sectionHeading('Upcoming Bookings'),
               TextButton(
@@ -546,8 +517,7 @@ void open(Module m) {
               padding: const EdgeInsets.all(19),
               decoration: BoxDecoration(
                 color: pale,
-                borderRadius:
-                    BorderRadius.circular(17),
+                borderRadius: BorderRadius.circular(17),
               ),
               child: const Row(
                 children: [
@@ -570,15 +540,12 @@ void open(Module m) {
               ),
             )
           else
-            ...upcomingBookings
-                .take(2)
-                .map(bookingCard),
+            ...upcomingBookings.take(2).map(bookingCard),
 
           const SizedBox(height: 28),
 
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               sectionHeading('Explore Our Facilities'),
               TextButton(
@@ -613,18 +580,15 @@ void open(Module m) {
 
           GridView.builder(
             shrinkWrap: true,
-            physics:
-                const NeverScrollableScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: residentModules.length,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
               childAspectRatio: 1.1,
             ),
-            itemBuilder: (c, i) =>
-                serviceTile(residentModules[i]),
+            itemBuilder: (c, i) => serviceTile(residentModules[i]),
           ),
 
           const SizedBox(height: 20),
@@ -679,10 +643,8 @@ void open(Module m) {
             const SizedBox(width: 10),
             Expanded(
               child: Column(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
@@ -716,11 +678,9 @@ void open(Module m) {
   Widget bookingCard(
     Map<String, dynamic> booking,
   ) {
-    final name =
-        '${booking['facility_name'] ?? 'Facility Booking'}';
+    final name = '${booking['facility_name'] ?? 'Facility Booking'}';
 
-    final status =
-        '${booking['status'] ?? 'pending'}';
+    final status = '${booking['status'] ?? 'pending'}';
 
     final start = DateTime.tryParse(
       '${booking['start_at'] ?? ''}',
@@ -729,8 +689,7 @@ void open(Module m) {
     String dateText = 'Date unavailable';
 
     if (start != null) {
-      dateText =
-          '${start.day}/${start.month}/${start.year} '
+      dateText = '${start.day}/${start.month}/${start.year} '
           'at ${start.hour.toString().padLeft(2, '0')}:'
           '${start.minute.toString().padLeft(2, '0')}';
     }
@@ -757,8 +716,7 @@ void open(Module m) {
             const SizedBox(width: 13),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
@@ -798,8 +756,7 @@ void open(Module m) {
   Widget featuredFacilityCard(
     Map<String, dynamic> facility,
   ) {
-    final name =
-        '${facility['name'] ?? 'Facility'}';
+    final name = '${facility['name'] ?? 'Facility'}';
 
     return InkWell(
       onTap: () => openPath(
@@ -822,8 +779,7 @@ void open(Module m) {
               child: Image.network(
                 facilityPhoto(facility),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(
+                errorBuilder: (_, __, ___) => Container(
                   color: pale,
                   child: const Icon(
                     Icons.apartment,
@@ -836,8 +792,7 @@ void open(Module m) {
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       name,
@@ -888,6 +843,144 @@ void open(Module m) {
   // ADMIN DASHBOARD
   // =====================================================
 
+  Widget adminStatistics() {
+    return FutureBuilder<dynamic>(
+      future: Api.request('GET', '/admin/dashboard'),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (snapshot.hasError || snapshot.data is! Map) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Text(
+                'Unable to load dashboard statistics.',
+              ),
+            ),
+          );
+        }
+
+        final data = snapshot.data as Map;
+
+        return GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: MediaQuery.of(context).size.width >= 900 ? 4 : 2,
+            mainAxisExtent: 145,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          children: [
+            adminStatCard(
+              'Total Residents',
+              data['total_residents'],
+              Icons.people_alt_outlined,
+              ocean,
+            ),
+            adminStatCard(
+              'Pending Approvals',
+              data['pending_approvals'],
+              Icons.person_add_alt_1_outlined,
+              Colors.orange,
+            ),
+            adminStatCard(
+              'Pending Bookings',
+              data['pending_bookings'],
+              Icons.event_available_outlined,
+              ocean,
+            ),
+            adminStatCard(
+              'Active Repairs',
+              data['active_repairs'],
+              Icons.build_outlined,
+              Colors.orange,
+            ),
+            adminStatCard(
+              'Unclaimed Parcels',
+              data['unclaimed_parcels'],
+              Icons.inventory_2_outlined,
+              ocean,
+            ),
+            adminStatCard(
+              'Unpaid Bills',
+              data['unpaid_bills'],
+              Icons.receipt_long_outlined,
+              Colors.red,
+            ),
+            adminStatCard(
+              'Pending Services',
+              data['pending_service_requests'],
+              Icons.handyman_outlined,
+              Colors.orange,
+            ),
+            adminStatCard(
+              'Published Announcements',
+              data['published_announcements'],
+              Icons.campaign_outlined,
+              Colors.teal,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget adminStatCard(
+    String label,
+    dynamic value,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(
+          color: Color(0xFFE3EBF2),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 25),
+            const SizedBox(height: 8),
+            Text(
+              '${value ?? "—"}',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: navy,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget adminDashboard() {
     return RefreshIndicator(
       onRefresh: () async {
@@ -917,8 +1010,7 @@ void open(Module m) {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Manage your community',
@@ -935,8 +1027,7 @@ void open(Module m) {
                 ),
                 const SizedBox(height: 15),
                 OutlinedButton(
-                  onPressed: () =>
-                      setState(() => tab = 1),
+                  onPressed: () => setState(() => tab = 1),
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.white,
                   ),
@@ -947,7 +1038,52 @@ void open(Module m) {
               ],
             ),
           ),
+
           const SizedBox(height: 24),
+
+// COMMUNITY OVERVIEW
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Community Overview',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: navy,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh statistics',
+                onPressed: () {
+                  setState(() {});
+                },
+                icon: const Icon(
+                  Icons.refresh,
+                  color: ocean,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          const Text(
+            'Live statistics from your community',
+            style: TextStyle(
+              fontSize: 13,
+              color: ocean,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          adminStatistics(),
+
+          const SizedBox(height: 24),
+
+// MANAGEMENT TOOLS
           const Text(
             'Management Tools',
             style: TextStyle(
@@ -956,21 +1092,20 @@ void open(Module m) {
               color: navy,
             ),
           ),
+
           const SizedBox(height: 12),
+
           GridView.builder(
             shrinkWrap: true,
-            physics:
-                const NeverScrollableScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: adminModules.length,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.1,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 240,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              mainAxisExtent: 120,
             ),
-            itemBuilder: (c, i) =>
-                serviceTile(adminModules[i]),
+            itemBuilder: (c, i) => serviceTile(adminModules[i]),
           ),
         ],
       ),
@@ -989,8 +1124,7 @@ void open(Module m) {
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Column(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircleAvatar(
                 backgroundColor: pale,
@@ -1036,8 +1170,7 @@ void open(Module m) {
                 child: Icon(m.icon, color: navy),
               ),
               title: Text(m.title),
-              trailing:
-                  const Icon(Icons.chevron_right),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () => open(m),
             ),
           ),
@@ -1079,8 +1212,7 @@ void open(Module m) {
             ),
           ),
         ),
-        if (widget.user['approved'] == 0 ||
-            widget.user['approved'] == false)
+        if (widget.user['approved'] == 0 || widget.user['approved'] == false)
           const Card(
             child: ListTile(
               leading: Icon(Icons.hourglass_empty),
@@ -1161,9 +1293,8 @@ class _HomeLinkNotificationsScreenState
       if (!mounted) return;
 
       setState(() {
-        notifications = (result as List)
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
+        notifications =
+            (result as List).map((e) => Map<String, dynamic>.from(e)).toList();
       });
     } catch (e) {
       if (mounted) {
@@ -1179,9 +1310,7 @@ class _HomeLinkNotificationsScreenState
   bool isUnread(Map<String, dynamic> notification) {
     final value = notification['is_read'];
 
-    return value == false ||
-        value == 0 ||
-        value == '0';
+    return value == false || value == 0 || value == '0';
   }
 
   Future<void> markAsRead(
@@ -1273,16 +1402,13 @@ class _HomeLinkNotificationsScreenState
   }
 
   String formatDate(dynamic value) {
-    final date =
-        DateTime.tryParse('$value')?.toLocal();
+    final date = DateTime.tryParse('$value')?.toLocal();
 
     if (date == null) return '';
 
-    final hour =
-        date.hour.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
 
-    final minute =
-        date.minute.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
 
     return '${date.day}/${date.month}/${date.year} '
         '$hour:$minute';
@@ -1290,12 +1416,10 @@ class _HomeLinkNotificationsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final unread =
-        notifications.where(isUnread).length;
+    final unread = notifications.where(isUnread).length;
 
     return Scaffold(
-      backgroundColor:
-          const Color(0xFFF6F8FC),
+      backgroundColor: const Color(0xFFF6F8FC),
       appBar: AppBar(
         title: const Text(
           'Notifications',
@@ -1307,8 +1431,7 @@ class _HomeLinkNotificationsScreenState
         actions: [
           if (unread > 0)
             TextButton.icon(
-              onPressed:
-                  processing ? null : markAllAsRead,
+              onPressed: processing ? null : markAllAsRead,
               icon: const Icon(
                 Icons.done_all,
                 size: 19,
@@ -1357,8 +1480,7 @@ class _HomeLinkNotificationsScreenState
                     ],
                   )
                 : ListView(
-                    padding:
-                        const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
                     children: [
                       Text(
                         '$unread unread notification${unread == 1 ? '' : 's'}',
@@ -1368,21 +1490,16 @@ class _HomeLinkNotificationsScreenState
                         ),
                       ),
                       const SizedBox(height: 15),
-
                       ...notifications.map(
                         (notification) {
-                          final type =
-                              '${notification['type'] ?? 'general'}';
+                          final type = '${notification['type'] ?? 'general'}';
 
-                          final unreadNotification =
-                              isUnread(notification);
+                          final unreadNotification = isUnread(notification);
 
-                          final color =
-                              notificationColor(type);
+                          final color = notificationColor(type);
 
                           return Card(
-                            margin:
-                                const EdgeInsets.only(
+                            margin: const EdgeInsets.only(
                               bottom: 12,
                             ),
                             elevation: 0,
@@ -1391,46 +1508,37 @@ class _HomeLinkNotificationsScreenState
                                     0xFFEAF3FC,
                                   )
                                 : Colors.white,
-                            shape:
-                                RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
                                 17,
                               ),
                               side: BorderSide(
-                                color:
-                                    unreadNotification
-                                        ? const Color(
-                                            0xFFB9D7F3,
-                                          )
-                                        : const Color(
-                                            0xFFE8EDF3,
-                                          ),
+                                color: unreadNotification
+                                    ? const Color(
+                                        0xFFB9D7F3,
+                                      )
+                                    : const Color(
+                                        0xFFE8EDF3,
+                                      ),
                               ),
                             ),
                             child: InkWell(
-                              borderRadius:
-                                  BorderRadius.circular(
+                              borderRadius: BorderRadius.circular(
                                 17,
                               ),
-                              onTap: () =>
-                                  markAsRead(
+                              onTap: () => markAsRead(
                                 notification,
                               ),
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.all(
+                                padding: const EdgeInsets.all(
                                   16,
                                 ),
                                 child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment
-                                          .start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     CircleAvatar(
                                       radius: 24,
-                                      backgroundColor:
-                                          color.withValues(
+                                      backgroundColor: color.withValues(
                                         alpha: 0.12,
                                       ),
                                       child: Icon(
@@ -1446,20 +1554,16 @@ class _HomeLinkNotificationsScreenState
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment
-                                                .start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
                                               Expanded(
                                                 child: Text(
                                                   '${notification['title'] ?? 'Notification'}',
-                                                  style:
-                                                      TextStyle(
-                                                    color:
-                                                        navy,
-                                                    fontSize:
-                                                        15,
+                                                  style: TextStyle(
+                                                    color: navy,
+                                                    fontSize: 15,
                                                     fontWeight:
                                                         unreadNotification
                                                             ? FontWeight.bold
@@ -1469,18 +1573,14 @@ class _HomeLinkNotificationsScreenState
                                               ),
                                               if (unreadNotification)
                                                 Container(
-                                                  width:
-                                                      9,
-                                                  height:
-                                                      9,
+                                                  width: 9,
+                                                  height: 9,
                                                   decoration:
                                                       const BoxDecoration(
-                                                    color:
-                                                        Color(
+                                                    color: Color(
                                                       0xFF2879C8,
                                                     ),
-                                                    shape:
-                                                        BoxShape.circle,
+                                                    shape: BoxShape.circle,
                                                   ),
                                                 ),
                                             ],
@@ -1490,14 +1590,10 @@ class _HomeLinkNotificationsScreenState
                                           ),
                                           Text(
                                             '${notification['message'] ?? ''}',
-                                            style:
-                                                const TextStyle(
-                                              fontSize:
-                                                  13,
-                                              color:
-                                                  ocean,
-                                              height:
-                                                  1.5,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: ocean,
+                                              height: 1.5,
                                             ),
                                           ),
                                           const SizedBox(
@@ -1507,43 +1603,32 @@ class _HomeLinkNotificationsScreenState
                                             children: [
                                               const Icon(
                                                 Icons.access_time,
-                                                size:
-                                                    13,
-                                                color:
-                                                    ocean,
+                                                size: 13,
+                                                color: ocean,
                                               ),
                                               const SizedBox(
-                                                width:
-                                                    5,
+                                                width: 5,
                                               ),
                                               Expanded(
                                                 child: Text(
                                                   formatDate(
-                                                    notification[
-                                                        'created_at'],
+                                                    notification['created_at'],
                                                   ),
-                                                  style:
-                                                      const TextStyle(
-                                                    fontSize:
-                                                        11,
-                                                    color:
-                                                        ocean,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: ocean,
                                                   ),
                                                 ),
                                               ),
                                               if (unreadNotification)
                                                 const Text(
                                                   'Tap to mark as read',
-                                                  style:
-                                                      TextStyle(
-                                                    fontSize:
-                                                        11,
-                                                    color:
-                                                        Color(
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: Color(
                                                       0xFF2879C8,
                                                     ),
-                                                    fontWeight:
-                                                        FontWeight.w600,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                             ],

@@ -1661,6 +1661,74 @@ app.get('/api/announcements', auth, approved, asyncRoute(async (req, res) => {
   res.json(rows);
 }));
 
+
+/* =========================================
+   ADMIN DASHBOARD STATISTICS
+========================================= */
+
+app.get(
+  '/api/admin/dashboard',
+  auth,
+  admin,
+  asyncRoute(async (req, res) => {
+
+    const rows = await run(`
+      SELECT
+        (
+          SELECT COUNT(*)
+          FROM users
+          WHERE role = 'resident'
+        ) AS total_residents,
+
+        (
+          SELECT COUNT(*)
+          FROM users
+          WHERE role = 'resident'
+            AND approved = 0
+        ) AS pending_approvals,
+
+        (
+          SELECT COUNT(*)
+          FROM bookings
+          WHERE status = 'pending'
+        ) AS pending_bookings,
+
+        (
+          SELECT COUNT(*)
+          FROM repairs
+          WHERE status IN ('pending', 'in_progress')
+        ) AS active_repairs,
+
+        (
+          SELECT COUNT(*)
+          FROM parcels
+          WHERE status = 'arrived'
+        ) AS unclaimed_parcels,
+
+        (
+          SELECT COUNT(*)
+          FROM bills
+          WHERE status = 'unpaid'
+        ) AS unpaid_bills,
+
+        (
+          SELECT COUNT(*)
+          FROM service_requests
+          WHERE status = 'pending'
+        ) AS pending_service_requests,
+
+        (
+          SELECT COUNT(*)
+          FROM announcements
+          WHERE is_published = 1
+        ) AS published_announcements
+    `);
+
+    res.json(rows[0]);
+  })
+);
+
+
 // Admin: View all announcements
 app.get('/api/admin/announcements', auth, admin, asyncRoute(async (req, res) => {
   const rows = await run(`
