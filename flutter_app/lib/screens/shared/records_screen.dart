@@ -1,4 +1,3 @@
-
 part of '../../main.dart';
 
 class RecordsScreen extends StatefulWidget {
@@ -153,8 +152,7 @@ class _RecordsState extends State<RecordsScreen> {
     final uploaded = facility['image_url']?.toString().trim();
 
     if (uploaded != null &&
-        (uploaded.startsWith('https://') ||
-            uploaded.startsWith('http://'))) {
+        (uploaded.startsWith('https://') || uploaded.startsWith('http://'))) {
       return uploaded;
     }
 
@@ -442,9 +440,7 @@ class _RecordsState extends State<RecordsScreen> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: Text(
-              widget.isAdmin
-                  ? 'Facility Requests'
-                  : 'My Bookings',
+              widget.isAdmin ? 'Facility Requests' : 'My Bookings',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -472,8 +468,336 @@ class _RecordsState extends State<RecordsScreen> {
     );
   }
 
+  Widget repairPhotoPreview(
+  String photoUrl, {
+  String label = 'Attached Repair Photo',
+}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14, bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+  label,
+  style: const TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.bold,
+    color: navy,
+  ),
+),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () {
+              showDialog<void>(
+                context: context,
+                builder: (dialogContext) => Dialog(
+                  backgroundColor: Colors.black,
+                  insetPadding: const EdgeInsets.all(20),
+                  child: Stack(
+                    children: [
+                      SizedBox(
+                        width: 900,
+                        height: MediaQuery.sizeOf(dialogContext).height * 0.75,
+                        child: InteractiveViewer(
+                          minScale: 1,
+                          maxScale: 5,
+                          child: Image.network(
+                            photoUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Text(
+                                'Unable to load photo',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: IconButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 420,
+                height: 220,
+                color: pale,
+                child: Image.network(
+                  photoUrl,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.broken_image_outlined,
+                          size: 40,
+                          color: ocean,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Photo unavailable',
+                          style: TextStyle(color: ocean),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          const Row(
+            children: [
+              Icon(
+                Icons.zoom_in,
+                size: 17,
+                color: ocean,
+              ),
+              SizedBox(width: 5),
+              Text(
+                'Tap photo to enlarge',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: ocean,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+   
+  Widget vehicleInfoRow(
+  IconData icon,
+  String label,
+  dynamic value,
+) {
+  final displayValue = value?.toString().trim() ?? '';
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 19, color: ocean),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.black54,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            displayValue.isEmpty ? 'Not provided' : displayValue,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: navy,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget vehicleCard(Map<String, dynamic> x) {
+  final photoUrl = x['photo_url']?.toString().trim() ?? '';
+
+  return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: pale,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.directions_car_outlined,
+                  color: navy,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${x['plate_number'] ?? 'Unknown Plate'}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: navy,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Registered Vehicle',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: ocean,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+
+          const Text(
+            'Vehicle Information',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: navy,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          vehicleInfoRow(
+            Icons.pin_outlined,
+            'Plate Number',
+            x['plate_number'],
+          ),
+
+          vehicleInfoRow(
+            Icons.directions_car_outlined,
+            'Vehicle Type',
+            x['vehicle_type'],
+          ),
+
+          vehicleInfoRow(
+            Icons.palette_outlined,
+            'Color',
+            x['color'],
+          ),
+
+          if (widget.isAdmin) ...[
+            const Divider(height: 28),
+
+            const Text(
+              'Resident Information',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: navy,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            vehicleInfoRow(
+              Icons.person_outline,
+              'Resident Name',
+              x['full_name'],
+            ),
+
+            vehicleInfoRow(
+              Icons.apartment_outlined,
+              'Building',
+              x['building'],
+            ),
+
+            vehicleInfoRow(
+              Icons.home_outlined,
+              'House / Unit Number',
+              x['unit_number'],
+            ),
+          ],
+
+          const Divider(height: 28),
+
+          if (photoUrl.isNotEmpty)
+            repairPhotoPreview(
+              photoUrl,
+              label: 'Attached Vehicle Photo',
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: pale,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Column(
+                children: [
+                  Icon(
+                    Icons.no_photography_outlined,
+                    size: 36,
+                    color: ocean,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'No vehicle photo attached',
+                    style: TextStyle(color: ocean),
+                  ),
+                ],
+              ),
+            ),
+
+          if (!widget.isAdmin) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: actions(x),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
   Widget record(Map<String, dynamic> x) {
-    final title =
+  if (path == '/vehicles/my' || path == '/admin/vehicles') {
+    return vehicleCard(x);
+  }
+
+  final title =
         '${x['name'] ?? x['facility_name'] ?? x['service_name'] ?? x['title'] ?? x['subject'] ?? x['plate_number'] ?? x['courier'] ?? x['full_name'] ?? x['body'] ?? 'Record #${x['id']}'}';
 
     final status = x['status']?.toString();
@@ -498,6 +822,7 @@ class _RecordsState extends State<RecordsScreen> {
                 'body',
                 'status',
                 'password_hash',
+                'photo_url',
                 'created_at',
               ].contains(e.key) &&
               e.value != null,
@@ -551,10 +876,11 @@ class _RecordsState extends State<RecordsScreen> {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-            if (x['reply'] != null)
-              Text(
-                'Juristic reply: ${x['reply']}',
-                style: const TextStyle(color: ocean),
+            if ((path == '/admin/repairs' || path == '/repairs/my') &&
+                x['photo_url'] != null &&
+                x['photo_url'].toString().trim().isNotEmpty)
+              repairPhotoPreview(
+                x['photo_url'].toString().trim(),
               ),
             const SizedBox(height: 6),
             Wrap(
@@ -723,15 +1049,12 @@ class _RecordsState extends State<RecordsScreen> {
       if (path == '/admin/bills') {
         out.add(
           btn(
-            x['status'] == 'paid'
-                ? 'Mark unpaid'
-                : 'Mark paid',
+            x['status'] == 'paid' ? 'Mark unpaid' : 'Mark paid',
             () => action(
               'PUT',
               '/admin/bills/$n/status',
               {
-                'status':
-                    x['status'] == 'paid' ? 'unpaid' : 'paid',
+                'status': x['status'] == 'paid' ? 'unpaid' : 'paid',
               },
             ),
           ),
@@ -843,9 +1166,7 @@ class _RecordsState extends State<RecordsScreen> {
     if (ok == true) {
       action(
         'DELETE',
-        path == '/rules'
-            ? '/admin/rules/$n'
-            : '/vehicles/$n',
+        path == '/rules' ? '/admin/rules/$n' : '/vehicles/$n',
       );
     }
   }

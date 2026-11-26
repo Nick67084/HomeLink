@@ -676,13 +676,19 @@ const modules = {
   },
 
   vehicles: {
-    columns: ['plate_number', 'vehicle_type', 'color'],
-    schema: z.object({
-      plate_number: string(2, 30),
-      vehicle_type: string(2, 60),
-      color: z.string().max(50).nullable().optional()
-    })
-  },
+  columns: [
+    'plate_number',
+    'vehicle_type',
+    'color',
+    'photo_url'
+  ],
+  schema: z.object({
+    plate_number: string(2, 30),
+    vehicle_type: string(2, 60),
+    color: z.string().max(50).nullable().optional(),
+    photo_url: z.string().url().max(500).nullable().optional()
+  })
+},
 
   suggestions: {
     columns: ['subject', 'message'],
@@ -710,18 +716,33 @@ for (const [table, cfg] of Object.entries(modules)) {
   );
 
   app.get(
-    `/api/admin/${table}`,
-    auth,
-    admin,
-    asyncRoute(async (req, res) => {
-      res.json(await run(
-        `SELECT t.*, u.full_name
-         FROM ${table} t
-         JOIN users u ON u.id=t.user_id
+  `/api/admin/${table}`,
+  auth,
+  admin,
+  asyncRoute(async (req, res) => {
+
+    if (table === 'vehicles') {
+      return res.json(await run(
+        `SELECT
+           t.*,
+           u.full_name,
+           x.building,
+           x.unit_number
+         FROM vehicles t
+         JOIN users u ON u.id = t.user_id
+         LEFT JOIN units x ON x.id = u.unit_id
          ORDER BY t.created_at DESC`
       ));
-    })
-  );
+    }
+
+    res.json(await run(
+      `SELECT t.*, u.full_name
+       FROM ${table} t
+       JOIN users u ON u.id = t.user_id
+       ORDER BY t.created_at DESC`
+    ));
+  })
+);
 
   app.post(
     `/api/${table}`,
@@ -768,13 +789,19 @@ for (const [table, cfg] of Object.entries(modules)) {
           return bad(res, s.error.issues[0].message);
         }
 
-        const values = cfg.columns.map(
-          column => s.data[column] ?? null
-        );
+        const updateColumns = cfg.columns.filter(
+  column =>
+    column !== 'photo_url' ||
+    s.data.photo_url !== undefined
+);
 
-        const updates = cfg.columns
-          .map(column => `${column}=?`)
-          .join(',');
+const values = updateColumns.map(
+  column => s.data[column] ?? null
+);
+
+const updates = updateColumns
+  .map(column => `${column}=?`)
+  .join(',');
 
         const result = await run(
           `UPDATE ${table}
@@ -1639,6 +1666,61 @@ app.post(
 // ==========================================
 // COMMUNITY ANNOUNCEMENTS
 // ==========================================
+
+// VEHICLE PHOTO UPLOAD
+
+app.post(
+  '/api/uploads/vehicle-photo',
+  auth,
+  resident,
+  approved,
+
+  (req, res, next) => {
+    repairPhotoUpload.single('photo')(req, res, err => {
+      if (err) {
+        return bad(
+          res,
+          err.message || 'Photo upload failed',
+          400
+        );
+      }
+
+      next();
+    });
+  },
+
+  asyncRoute(async (req, res) => {
+    if (!req.file) {
+      return bad(res, 'Please select a vehicle photo');
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'homelink/vehicles',
+          resource_type: 'image',
+          public_id: crypto.randomUUID(),
+          overwrite: false,
+          allowed_formats: ['jpg', 'jpeg', 'png', 'webp']
+        },
+        (error, result) => {
+          if (error) {
+            return reject(error);
+          }
+
+          resolve(result);
+        }
+      );
+
+      uploadStream.end(req.file.buffer);
+    });
+
+    res.status(201).json({
+      message: 'Vehicle photo uploaded successfully',
+      url: result.secure_url
+    });
+  })
+);
 
 const announcementSchema = z.object({
   title: z.string().trim().min(1).max(150),

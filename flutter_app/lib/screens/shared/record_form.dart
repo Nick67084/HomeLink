@@ -1,4 +1,3 @@
-
 part of '../../main.dart';
 
 class RecordForm extends StatefulWidget {
@@ -30,6 +29,17 @@ class _RecordFormState extends State<RecordForm> {
   Uint8List? photoPreview;
 
   bool get isRepair => widget.path == '/repairs/my';
+
+  bool get isVehicle => widget.path == '/vehicles/my';
+
+  bool get supportsPhoto => isRepair || isVehicle;
+  bool get needsResidentSelection =>
+      widget.path == '/admin/bills' || widget.path == '/admin/parcels';
+
+  List<Map<String, dynamic>> residents = [];
+
+  bool loadingResidents = false;
+  String? residentLoadError;
 
   List<String> get fields => switch (widget.path) {
         '/repairs/my' => [
@@ -80,6 +90,52 @@ class _RecordFormState extends State<RecordForm> {
         text: '${widget.existing?[field] ?? ''}',
       );
     }
+
+    if (needsResidentSelection) {
+      loadResidents();
+    }
+  }
+
+  Future<void> loadResidents() async {
+    setState(() {
+      loadingResidents = true;
+      residentLoadError = null;
+    });
+
+    try {
+      final result = await Api.request(
+        'GET',
+        '/admin/residents',
+      );
+
+      final list = (result as List)
+          .map((e) => Map<String, dynamic>.from(e))
+          .where((e) =>
+              e['id'] != null &&
+              (e['approved'] == 1 ||
+                  e['approved'] == true ||
+                  e['approved'] == '1'))
+          .toList();
+
+      list.sort((a, b) =>
+          '${a['full_name'] ?? ''}'.compareTo('${b['full_name'] ?? ''}'));
+
+      if (!mounted) return;
+
+      setState(() {
+        residents = list;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        residentLoadError = err(e);
+      });
+    } finally {
+      if (mounted) {
+        setState(() => loadingResidents = false);
+      }
+    }
   }
 
   @override
@@ -108,10 +164,10 @@ class _RecordFormState extends State<RecordForm> {
 
       final bytes = await photo.readAsBytes();
 
-      // Limit uploads to 5 MB.
-      if (bytes.length > 5 * 1024 * 1024) {
+      // Limit uploads to 4 MB.
+      if (bytes.length > 4 * 1024 * 1024) {
         if (mounted) {
-          toast(context, 'Please select an image under 5 MB.');
+          toast(context, 'Please select an image no larger than 4 MB.');
         }
         return;
       }
@@ -140,12 +196,15 @@ class _RecordFormState extends State<RecordForm> {
     });
   }
 
-  Future<String> uploadRepairPhoto() async {
+  Future<String> uploadPhoto() async {
     if (selectedPhoto == null || photoPreview == null) {
       throw Exception('No photo selected');
     }
 
-    final uri = Uri.parse('$apiBase/uploads/repair-photo');
+    final uploadPath =
+        isVehicle ? '/uploads/vehicle-photo' : '/uploads/repair-photo';
+
+    final uri = Uri.parse('$apiBase$uploadPath');
 
     final request = http.MultipartRequest('POST', uri);
 
@@ -153,27 +212,26 @@ class _RecordFormState extends State<RecordForm> {
       request.headers['Authorization'] = 'Bearer ${Api.token}';
     }
 
-    
-final filename = selectedPhoto!.name;
-final extension = filename.split('.').last.toLowerCase();
+    final filename = selectedPhoto!.name;
+    final extension = filename.split('.').last.toLowerCase();
 
-final mimeType = switch (extension) {
-  'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
-  'png' => MediaType('image', 'png'),
-  'webp' => MediaType('image', 'webp'),
-  _ => throw Exception(
-      'Unsupported image format. Please choose JPG, PNG or WebP.',
-    ),
-};
+    final mimeType = switch (extension) {
+      'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
+      'png' => MediaType('image', 'png'),
+      'webp' => MediaType('image', 'webp'),
+      _ => throw Exception(
+          'Unsupported image format. Please choose JPG, PNG or WebP.',
+        ),
+    };
 
-request.files.add(
-  http.MultipartFile.fromBytes(
-    'photo',
-    photoPreview!,
-    filename: filename,
-    contentType: mimeType,
-  ),
-);
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'photo',
+        photoPreview!,
+        filename: filename,
+        contentType: mimeType,
+      ),
+    );
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
@@ -204,13 +262,23 @@ request.files.add(
   }
 
   Future<void> submit() async {
+    if (needsResidentSelection) {
+      final selected = inputs['user_id']?.text ?? '';
+
+      if (loadingResidents ||
+          residentLoadError != null ||
+          !residents.any((r) => '${r['id']}' == selected)) {
+        toast(context, 'Please select a valid resident.');
+        return;
+      }
+    }
+
     if (!key.currentState!.validate()) return;
 
     setState(() => saving = true);
 
     final data = <String, dynamic>{
-      for (final entry in inputs.entries)
-        entry.key: entry.value.text.trim(),
+      for (final entry in inputs.entries) entry.key: entry.value.text.trim(),
     };
 
     final existing = widget.existing;
@@ -249,13 +317,13 @@ request.files.add(
     }
 
     try {
-      if (isRepair) {
-        // Keep the existing photo when editing a repair.
+      if (supportsPhoto) {
+        // Preserve the existing photo when editing.
         String? photoUrl = existing?['photo_url']?.toString();
 
-        // Upload a newly selected photo first.
+        // Upload a newly selected photo.
         if (selectedPhoto != null) {
-          photoUrl = await uploadRepairPhoto();
+          photoUrl = await uploadPhoto();
         }
 
         data['photo_url'] = photoUrl;
@@ -329,30 +397,106 @@ request.files.add(
     setState(() {});
   }
 
-  Widget repairPhotoPicker() {
+  Widget residentDropdown() {
+    if (loadingResidents) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (residentLoadError != null) {
+      return Column(
+        children: [
+          Text(residentLoadError!),
+          TextButton.icon(
+            onPressed: loadResidents,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry loading residents'),
+          ),
+        ],
+      );
+    }
+
+    if (residents.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: Text('No approved residents available.'),
+      );
+    }
+
+    final selected = inputs['user_id']?.text;
+
+    return DropdownButtonFormField<String>(
+      initialValue: residents.any(
+        (r) => '${r['id']}' == selected,
+      )
+          ? selected
+          : null,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Select Resident',
+        prefixIcon: Icon(Icons.person_outline),
+      ),
+      hint: const Text('Choose a resident'),
+      items: residents.map((resident) {
+        final id = '${resident['id']}';
+        final name = '${resident['full_name'] ?? 'Resident'}';
+        final building = '${resident['building'] ?? '-'}';
+        final unit = '${resident['unit_number'] ?? '-'}';
+
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Text(
+            '$name — Building $building, Unit $unit',
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).toList(),
+      onChanged: saving
+          ? null
+          : (value) {
+              setState(() {
+                inputs['user_id']?.text = value ?? '';
+              });
+            },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select a resident';
+        }
+
+        return null;
+      },
+    );
+  }
+
+  Widget photoPicker() {
     final existingPhoto = widget.existing?['photo_url']?.toString();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Repair Photo',
-          style: TextStyle(
+        Text(
+          isVehicle ? 'Vehicle Photo' : 'Repair Photo',
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: navy,
           ),
         ),
         const SizedBox(height: 7),
-        const Text(
-          'Upload a photo of the issue (optional, maximum 5 MB).',
-          style: TextStyle(
-            color: ocean,
-            fontSize: 12,
-          ),
-        ),
+        Text(
+  isVehicle
+      ? 'Upload a photo of your vehicle (optional, maximum 4 MB).'
+      : 'Upload a photo of the issue (optional, maximum 4 MB).',
+  style: const TextStyle(
+    color: ocean,
+    fontSize: 12,
+  ),
+),
         const SizedBox(height: 12),
-
         if (photoPreview != null)
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -363,8 +507,7 @@ request.files.add(
               fit: BoxFit.cover,
             ),
           )
-        else if (existingPhoto != null &&
-            existingPhoto.isNotEmpty)
+        else if (existingPhoto != null && existingPhoto.isNotEmpty)
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Image.network(
@@ -407,16 +550,12 @@ request.files.add(
               ],
             ),
           ),
-
         const SizedBox(height: 12),
-
         Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: pickingImage || saving
-                    ? null
-                    : choosePhoto,
+                onPressed: pickingImage || saving ? null : choosePhoto,
                 icon: const Icon(Icons.photo_library_outlined),
                 label: Text(
                   pickingImage
@@ -447,9 +586,7 @@ request.files.add(
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.existing == null
-              ? 'New Request'
-              : 'Update Record',
+          widget.existing == null ? 'New Request' : 'Update Record',
         ),
       ),
       body: SafeArea(
@@ -467,7 +604,6 @@ request.files.add(
                 ),
               ),
               const SizedBox(height: 12),
-
               if (widget.path == '/bookings/my')
                 const Padding(
                   padding: EdgeInsets.only(bottom: 14),
@@ -475,7 +611,6 @@ request.files.add(
                     'Choose a future start and end time (maximum 4 hours).',
                   ),
                 ),
-
               if (widget.path == '/admin/bills')
                 const Padding(
                   padding: EdgeInsets.only(bottom: 14),
@@ -483,81 +618,76 @@ request.files.add(
                     'Due date format: YYYY-MM-DD',
                   ),
                 ),
-
               ...fields.map(
                 (field) => Padding(
                   padding: const EdgeInsets.only(bottom: 14),
-                  child: TextFormField(
-                    controller: inputs[field],
-                    maxLines: [
-                      'description',
-                      'message',
-                      'content',
-                      'note',
-                      'reply',
-                      'body',
-                    ].contains(field)
-                        ? 4
-                        : 1,
-                    keyboardType: [
-                      'amount',
-                      'user_id',
-                    ].contains(field)
-                        ? TextInputType.number
-                        : TextInputType.text,
-                    readOnly: [
-                      'start_at',
-                      'end_at',
-                      'due_date',
-                    ].contains(field),
-                    onTap: [
-                      'start_at',
-                      'end_at',
-                    ].contains(field)
-                        ? () => chooseDateTime(field)
-                        : field == 'due_date'
-                            ? chooseDueDate
-                            : null,
-                    decoration: InputDecoration(
-                      labelText: field
-                          .replaceAll('_', ' ')
-                          .toUpperCase(),
-                      suffixIcon: [
-                        'start_at',
-                        'end_at',
-                        'due_date',
-                      ].contains(field)
-                          ? const Icon(
-                              Icons.calendar_today_outlined,
-                            )
-                          : null,
-                    ),
-                    validator: (value) {
-                      if ([
-                        'color',
-                        'tracking_number',
-                        'note',
-                      ].contains(field)) {
-                        return null;
-                      }
+                  child: field == 'user_id' && needsResidentSelection
+                      ? residentDropdown()
+                      : TextFormField(
+                          controller: inputs[field],
+                          maxLines: [
+                            'description',
+                            'message',
+                            'content',
+                            'note',
+                            'reply',
+                            'body',
+                          ].contains(field)
+                              ? 4
+                              : 1,
+                          keyboardType: [
+                            'amount',
+                            'user_id',
+                          ].contains(field)
+                              ? TextInputType.number
+                              : TextInputType.text,
+                          readOnly: [
+                            'start_at',
+                            'end_at',
+                            'due_date',
+                          ].contains(field),
+                          onTap: [
+                            'start_at',
+                            'end_at',
+                          ].contains(field)
+                              ? () => chooseDateTime(field)
+                              : field == 'due_date'
+                                  ? chooseDueDate
+                                  : null,
+                          decoration: InputDecoration(
+                            labelText: field.replaceAll('_', ' ').toUpperCase(),
+                            suffixIcon: [
+                              'start_at',
+                              'end_at',
+                              'due_date',
+                            ].contains(field)
+                                ? const Icon(
+                                    Icons.calendar_today_outlined,
+                                  )
+                                : null,
+                          ),
+                          validator: (value) {
+                            if ([
+                              'color',
+                              'tracking_number',
+                              'note',
+                            ].contains(field)) {
+                              return null;
+                            }
 
-                      if (value == null ||
-                          value.trim().isEmpty) {
-                        return 'Required';
-                      }
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
 
-                      return null;
-                    },
-                  ),
+                            return null;
+                          },
+                        ),
                 ),
               ),
-
-              if (isRepair) repairPhotoPicker(),
-
+             if (supportsPhoto) photoPicker(),
               const SizedBox(height: 12),
-
               FilledButton(
-                onPressed: saving ? null : submit,
+                onPressed: saving || pickingImage ? null : submit,
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Text(

@@ -36,12 +36,13 @@ class _ShellState extends State<Shell> {
   }
 
   Future<void> loadNotifications() async {
-    try {
-      final result = await Api.request(
-        'GET',
-        '/notifications/unread-count',
-      );
+  if (isAdmin || !mounted) return;
 
+  try {
+    final result = await Api.request(
+      'GET',
+      '/notifications/unread-count',
+    );
       if (mounted) {
         setState(() {
           unreadCount = (result['unread_count'] as num).toInt();
@@ -221,9 +222,10 @@ class _ShellState extends State<Shell> {
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: openNotifications,
-            tooltip: 'Notifications',
+  if (!isAdmin)
+    IconButton(
+      onPressed: openNotifications,
+      tooltip: 'Notifications',
             icon: Badge(
               isLabelVisible: unreadCount > 0,
               label: Text(
@@ -474,13 +476,13 @@ class _ShellState extends State<Shell> {
                 ),
               ),
               quickAction(
-                'Messages',
-                'Contact management',
-                Icons.chat_bubble_outline,
+                'Announcements',
+                'Community updates',
+                Icons.campaign_outlined,
                 () => openPath(
-                  'Messages',
-                  '/messages/my',
-                  Icons.chat_bubble_outline,
+                  'Announcements',
+                  '/announcements',
+                  Icons.campaign_outlined,
                 ),
               ),
             ],
@@ -582,11 +584,11 @@ class _ShellState extends State<Shell> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: residentModules.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.1,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 240,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              mainAxisExtent: 120,
             ),
             itemBuilder: (c, i) => serviceTile(residentModules[i]),
           ),
