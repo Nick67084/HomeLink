@@ -10,47 +10,32 @@ const jwt = require('jsonwebtoken');
 const { z } = require('zod');
 const db = require('./db');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const cloudinary = require('./cloudinary');
 const crypto = require('crypto');
 
 const app = express();
 
 
-const uploadDirectory = path.join(__dirname, '../uploads');
-
-fs.mkdirSync(uploadDirectory, { recursive: true });
-
-const repairPhotoStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDirectory);
-  },
-  filename: (req, file, cb) => {
-    const extension = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/webp': '.webp'
-    }[file.mimetype];
-
-    cb(null, `${crypto.randomUUID()}${extension || '.jpg'}`);
-  }
-});
 
 const repairPhotoUpload = multer({
-  storage: repairPhotoStorage,
+  storage: multer.memoryStorage(),
+
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 4 * 1024 * 1024,
     files: 1
   },
+
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       'image/jpeg',
       'image/png',
       'image/webp'
     ];
-     console.log('Uploaded file:', file.originalname, 'MIME:', file.mimetype);
+
     if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error('Only JPG, PNG and WebP images are allowed'));
+      return cb(
+        new Error('Only JPG, PNG and WebP images are allowed')
+      );
     }
 
     cb(null, true);
@@ -1596,37 +1581,59 @@ app.put(
   })
 );
 
-app.use(
-  '/uploads',
-  express.static(uploadDirectory)
-);
-
 app.post(
   '/api/uploads/repair-photo',
   auth,
+  resident,
+  approved,
+
   (req, res, next) => {
     repairPhotoUpload.single('photo')(req, res, err => {
       if (err) {
-        return bad(res, err.message || 'Photo upload failed', 400);
+        return bad(
+          res,
+          err.message || 'Photo upload failed',
+          400
+        );
       }
 
       next();
     });
   },
+
   asyncRoute(async (req, res) => {
     if (!req.file) {
       return bad(res, 'Please select a photo');
     }
 
-    const photoUrl =
-      `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'homelink/repairs',
+          resource_type: 'image',
+          public_id: crypto.randomUUID(),
+          overwrite: false,
+          allowed_formats: ['jpg', 'jpeg', 'png', 'webp']
+        },
+        (error, result) => {
+          if (error) {
+            return reject(error);
+          }
+
+          resolve(result);
+        }
+      );
+
+      uploadStream.end(req.file.buffer);
+    });
 
     res.status(201).json({
       message: 'Photo uploaded successfully',
-      url: photoUrl
+      url: result.secure_url
     });
   })
 );
+
 
 
 // ==========================================
@@ -1925,14 +1932,16 @@ app.use((err, req, res, next) => {
   return bad(res, 'Internal server error', 500);
 });
 
-// START SERVER
 
-if (require.main === module) {
-  const port = 3001;
+ // START SERVER
 
-  app.listen(port, () => {
+if (require.main === module && !process.env.VERCEL) {
+  const port = Number(process.env.PORT || 3001);
+
+  app.listen(port, '0.0.0.0', () => {
     console.log(`HomeLink API on ${port}`);
   });
 }
 
 module.exports = app;
+
